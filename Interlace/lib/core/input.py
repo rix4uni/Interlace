@@ -1,6 +1,6 @@
 import functools
 import itertools
-import os.path
+import os
 import sys
 from argparse import ArgumentParser
 from io import TextIOWrapper
@@ -255,6 +255,10 @@ class InputHelper(object):
         # removing the trailing slash if any
         if arguments.output and arguments.output[-1] == "/":
             arguments.output = arguments.output[:-1]
+
+        # create output directory if it doesn't exist
+        if arguments.output and not os.path.exists(arguments.output):
+            os.makedirs(arguments.output, exist_ok=True)
 
         ports = InputHelper._process_port(arguments.port) if arguments.port \
             else None
