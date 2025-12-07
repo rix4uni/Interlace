@@ -24,6 +24,7 @@ Easily turn single threaded command line applications into a fast, multi-threade
 - [Advanced Usage: Blocks](#Blocks)
 - [Exclusions](#Exclusions)
 - [Recent Improvements](#Recent-Improvements)
+- [Resume Functionality](#Resume-Functionality)
 
 # Setup 
 Install using one of the following methods:
@@ -81,6 +82,7 @@ After installation, Interlace will be added to your path as `interlace`.
 | --no-bar / --sober |  If set then progress bar be stripped out                                                            |
 | --no-cidr  | If set then CIDR notation in a target file will not be automatically be expanded into individual hosts       |
 | --no-color | If set then any foreground or background colours will be stripped out                                        |
+| --resume   | Resume from a previous interrupted run. Specify a resume file path, or use default `.interlace_resume.json`. Completed tasks are automatically skipped. |
 | --silent   | If set then only important information will be displayed and banners and other information will be redacted  |
 | -v         | If set then verbose output will be displayed in the terminal                                                 |
 
@@ -267,6 +269,29 @@ Interlace now provides clean, user-friendly error messages without full Python t
 
 ## Empty File Detection
 When using `-tL` with an empty or whitespace-only target file, Interlace will detect this and display a specific error message indicating the file is empty, making it easier to troubleshoot configuration issues.
+
+## Resume Functionality
+Interlace now supports resuming interrupted jobs using the `--resume` flag. This feature allows you to:
+
+- **Resume from interruptions**: If a scan is interrupted (Ctrl+C, system crash, etc.), you can resume from where it left off
+- **Skip completed tasks**: Already completed tasks are automatically identified and skipped
+- **Automatic state management**: Completed tasks are tracked in a resume file (default: `.interlace_resume.json`)
+- **Progress preservation**: The progress bar correctly shows progress including already completed tasks
+- **Automatic cleanup**: Resume file is automatically deleted when all tasks complete successfully
+
+### Usage Example:
+```bash
+# First run (gets interrupted)
+interlace -tL targets.txt -threads 5 -c "echo _target_ | nuclei -duc -silent -severity critical" --resume
+
+# Resume from where it left off (uses default .interlace_resume.json)
+interlace -tL targets.txt -threads 5 -c "echo _target_ | nuclei -duc -silent -severity critical" --resume
+
+# Or specify a custom resume file
+interlace -tL targets.txt -threads 5 -c "echo _target_ | nuclei -duc -silent -severity critical" --resume my_scan_resume.json
+```
+
+**Note:** Tasks are identified by their command hash, so if you change the command, those tasks will be re-executed. The resume file is automatically cleared when all tasks complete successfully.
 
 # Authors and Thanks
 Originally written by Michael Skelton ([codingo](https://twitter.com/codingo_)) and Sajeeb Lohani ([sml555](https://twitter.com/sml555_)) with help from Charelle Collett ([@Charcol0x89](https://twitter.com/Charcol0x89)) for threading refactoring and overall approach, and Luke Stephens ([hakluke](https://twitter.com/hakluke)) for testing and approach.

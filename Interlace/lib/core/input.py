@@ -576,6 +576,14 @@ class InputParser(object):
             help='repeat the given command x number of times.'
         )
 
+        parser.add_argument(
+            '--resume', dest='resume', required=False,
+            help='Resume from a previous run. Specify a resume file path, or use default .interlace_resume.json',
+            nargs='?',
+            const='.interlace_resume.json',
+            default=None
+        )
+
         output_types = parser.add_mutually_exclusive_group()
         output_types.add_argument(
             '-v', '--verbose', dest='verbose', action='store_true', default=False,

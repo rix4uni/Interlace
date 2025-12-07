@@ -40,9 +40,16 @@ def main():
             output,
             arguments.sober,
             silent=arguments.silent,
-            output_helper=output
+            output_helper=output,
+            resume_file=arguments.resume
         )
         pool.run()
+        
+        # Clear resume file on successful completion
+        if arguments.resume and pool.resume_manager:
+            pool.resume_manager.clear()
+            if not arguments.silent:
+                output.terminal(Level.THREAD, "Resume", "All tasks completed. Resume file cleared.")
     except Exception as e:
         # Print clean error message without traceback for user-facing errors
         print(str(e), file=sys.stderr)
