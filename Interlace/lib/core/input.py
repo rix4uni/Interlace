@@ -178,21 +178,64 @@ class InputHelper(object):
             # If ","s not in target_spec, this returns [target_spec], so this
             # static method always returns a list
 
+        file_path = None
+        is_file_empty = False
+        
         if arguments.target:
             target_specs = pre_process_target_spec(arguments.target)
         else:
             target_specs_file = arguments.target_list
-            if not isinstance(target_specs_file, TextIOWrapper):
+            if target_specs_file is None:
+                # No file provided, this shouldn't happen but handle gracefully
+                target_specs = iter([])
+            elif not isinstance(target_specs_file, TextIOWrapper):
                 if not sys.stdin.isatty():
                     target_specs_file = sys.stdin
-            target_specs = (
-                target_spec.strip() for target_spec in target_specs_file
-            )
-            target_specs = (
-                pre_process_target_spec(target_spec) for target_spec in
-                target_specs if target_spec
-            )
-            target_specs = itertools.chain(*target_specs)
+                # For non-TextIOWrapper that's not stdin, fall back to generator approach
+                target_specs = (
+                    target_spec.strip() for target_spec in target_specs_file
+                )
+                target_specs = (
+                    pre_process_target_spec(target_spec) for target_spec in
+                    target_specs if target_spec
+                )
+                target_specs = itertools.chain(*target_specs)
+            else:
+                # Get file path from file handle if available
+                if hasattr(target_specs_file, 'name'):
+                    file_path = target_specs_file.name
+                
+                # Read all lines to check if file is empty
+                try:
+                    # Try to read all lines
+                    if hasattr(target_specs_file, 'readlines'):
+                        all_lines = target_specs_file.readlines()
+                        # Check if file is empty or contains only whitespace
+                        if not all_lines or all(not line.strip() for line in all_lines):
+                            is_file_empty = True
+                            target_specs = iter([])
+                        else:
+                            target_specs = (line.strip() for line in all_lines)
+                    else:
+                        # For stdin or non-seekable files, read lines as we go
+                        all_lines = list(target_specs_file)
+                        if not all_lines or all(not line.strip() for line in all_lines):
+                            is_file_empty = True
+                            target_specs = iter([])
+                        else:
+                            target_specs = (line.strip() for line in all_lines)
+                except (AttributeError, IOError):
+                    # If we can't read, fall back to original approach
+                    target_specs = (
+                        target_spec.strip() for target_spec in target_specs_file
+                    )
+            
+            if not is_file_empty:
+                target_specs = (
+                    pre_process_target_spec(target_spec) for target_spec in
+                    target_specs if target_spec
+                )
+                target_specs = itertools.chain(*target_specs)
 
         def parse_and_group_target_specs(target_specs, nocidr):
             str_targets = set()
@@ -248,7 +291,7 @@ class InputHelper(object):
             str_targets -= str_exclusions
             ipset_targets -= ipset_exclusions
 
-        return (str_targets, ipset_targets)
+        return (str_targets, ipset_targets, file_path, is_file_empty)
 
     @staticmethod
     def process_data_for_tasks_iterator(arguments):
@@ -266,13 +309,32 @@ class InputHelper(object):
         real_ports = InputHelper._process_port(arguments.realport) if \
             arguments.realport else None
 
-        str_targets, ipset_targets = InputHelper._process_targets(
+        result = InputHelper._process_targets(
             arguments=arguments,
         )
+        str_targets, ipset_targets, file_path, is_file_empty = result
         targets_count = len(str_targets) + len(ipset_targets)
 
         if not targets_count:
-            raise Exception("No target provided, or empty target list")
+            # Provide specific error message based on input type
+            if arguments.target_list:
+                # Using file input
+                if is_file_empty:
+                    if file_path:
+                        raise Exception(f"Target file '{file_path}' is empty or contains no valid targets")
+                    else:
+                        raise Exception("Target file is empty or contains no valid targets")
+                else:
+                    if file_path:
+                        raise Exception(f"Target file '{file_path}' contains no valid targets")
+                    else:
+                        raise Exception("Target file contains no valid targets")
+            elif arguments.target:
+                # Using -t argument
+                raise Exception("No target provided")
+            else:
+                # Fallback
+                raise Exception("No target provided, or empty target list")
 
         if arguments.random:
             files = InputHelper._get_files_from_directory(arguments.random)

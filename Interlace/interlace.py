@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import sys
 from sys import argv
 
 from Interlace.lib.core.input import InputParser, InputHelper
@@ -31,16 +32,21 @@ def main():
     else:
         repeat = 1
 
-    pool = Pool(
-        arguments.threads,
-        task_queue_generator_func(arguments, output, repeat),
-        arguments.timeout,
-        output,
-        arguments.sober,
-        silent=arguments.silent,
-        output_helper=output
-    )
-    pool.run()
+    try:
+        pool = Pool(
+            arguments.threads,
+            task_queue_generator_func(arguments, output, repeat),
+            arguments.timeout,
+            output,
+            arguments.sober,
+            silent=arguments.silent,
+            output_helper=output
+        )
+        pool.run()
+    except Exception as e:
+        # Print clean error message without traceback for user-facing errors
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

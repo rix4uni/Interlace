@@ -23,6 +23,7 @@ Easily turn single threaded command line applications into a fast, multi-threade
 - [Advanced Usage: Blocker](#Blocker)
 - [Advanced Usage: Blocks](#Blocks)
 - [Exclusions](#Exclusions)
+- [Recent Improvements](#Recent-Improvements)
 
 # Setup 
 Install using:
@@ -42,7 +43,7 @@ Dependencies will then be installed and Interlace will be added to your path as 
 | -e         | Specify a list of targets to exclude either in comma-delimited format, CIDR notation, or as an individual host         |
 | -eL        | Specify a list of targets to exclude                                                                         |
 | -threads   | Specify the maximum number of threads to run at any one time (DEFAULT:5)                                     |
-| -timeout   | Specify a timeout value in seconds for any single thread (DEFAULT:600)                                       |
+| -timeout   | Specify a timeout value in seconds for any single thread. Commands exceeding this timeout will be automatically terminated (DEFAULT:600)                                       |
 | -c         | Specify a single command to execute over each target or domain                                               |
 | -cL        | Specify a list of commands to execute over each target or domain                                             |
 | -o         | Specify an output folder variable that can be used in commands as \_output\_                                 |
@@ -69,6 +70,8 @@ Dependencies will then be installed and Interlace will be added to your path as 
 Both `-t` and `-tL` will be processed the same. You can pass targets the same as you would when using nmap. This can be done using CIDR notation, dash notation, or a comma-delimited list of targets. A single target list file can also use different notation types per line.
 
 Alternatively, you can pass targets in via STDIN and neither -t or -tL will be required.
+
+**Note:** If a target file (`-tL`) is empty or contains only whitespace, Interlace will display a clear error message indicating the file is empty, without showing a full traceback.
 
 # Variable Replacements
 The following variables will be replaced in commands at runtime:
@@ -224,6 +227,20 @@ Using the above example, let's assume you want independent scans to be via diffe
 ```
 ➜  /tmp interlace -tL ./targets.txt -pL ./proxies.txt -threads 5 -c "nikto --host _target_:_port_ -useproxy _proxy_ > ./_target_-_port_-nikto.txt" -p 80,443 -v
 ```
+
+# Recent Improvements
+
+## Enhanced Timeout Handling
+The `-timeout` parameter now properly enforces timeouts on subprocess commands. Commands that exceed the specified timeout (default: 600 seconds) will be automatically terminated, preventing hanging processes and ensuring the program completes in a timely manner.
+
+## Improved Progress Bar
+The progress bar now accurately reflects task completion rather than task initiation. This means the progress bar reaches 100% only when all tasks have actually finished executing, providing a more accurate representation of job progress.
+
+## Better Error Messages
+Interlace now provides clean, user-friendly error messages without full Python tracebacks. When errors occur (such as empty target files), you'll see clear, actionable error messages that help you quickly identify and fix issues.
+
+## Empty File Detection
+When using `-tL` with an empty or whitespace-only target file, Interlace will detect this and display a specific error message indicating the file is empty, making it easier to troubleshoot configuration issues.
 
 # Authors and Thanks
 Originally written by Michael Skelton ([codingo](https://twitter.com/codingo_)) and Sajeeb Lohani ([sml555](https://twitter.com/sml555_)) with help from Charelle Collett ([@Charcol0x89](https://twitter.com/Charcol0x89)) for threading refactoring and overall approach, and Luke Stephens ([hakluke](https://twitter.com/hakluke)) for testing and approach.

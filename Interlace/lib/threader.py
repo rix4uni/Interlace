@@ -2,7 +2,7 @@ import subprocess
 import os
 import queue
 import platform
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Event
 from tqdm import tqdm
 
@@ -36,10 +36,10 @@ class Task(object):
     def replace(self, old, new):
         self.task = self.task.replace(old, new)
 
-    def run(self, t=False):
+    def run(self, t=False, timeout=None):
         for lock in self.sibling_locks:
             lock.wait()
-        self._run_task(t)
+        self._run_task(t, timeout)
         if self.self_lock:
             self.self_lock.set()
 
@@ -56,20 +56,30 @@ class Task(object):
             self.self_lock.clear()
         return self.self_lock
 
-    def _run_task(self, t=False):
+    def _run_task(self, t=False, timeout=None):
         if self.silent:
             s = subprocess.Popen(self.task, shell=True,
                                  stdout=subprocess.DEVNULL,
                                  encoding="utf-8",
                                  executable=shell)
-            s.communicate()
+            try:
+                s.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                s.kill()
+                s.communicate()
+                raise
             return
         else:
             s = subprocess.Popen(self.task, shell=True,
                                  stdout=subprocess.PIPE,
                                  encoding="utf-8",
                                  executable=shell)
-            out, _ = s.communicate()
+            try:
+                out, _ = s.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                s.kill()
+                s.communicate()
+                raise
 
         if out != "":
             if t:
@@ -97,12 +107,18 @@ class Worker(object):
 
             try:
                 if isinstance(self.tqdm, tqdm):
+                    task.run(self.tqdm, timeout=self.timeout)
                     self.tqdm.update(1)
-                    task.run(self.tqdm)
                 else:
-                    task.run()
+                    task.run(timeout=self.timeout)
+            except subprocess.TimeoutExpired:
+                self.output_helper.terminal(Level.ERROR, task.name(), f"Task timed out after {self.timeout} seconds")
+                if isinstance(self.tqdm, tqdm):
+                    self.tqdm.update(1)
             except Exception as e:
                 self.output_helper.terminal(Level.ERROR, task.name(), f"Task failed: {e}")
+                if isinstance(self.tqdm, tqdm):
+                    self.tqdm.update(1)
 
 
 class Pool(object):
@@ -128,8 +144,13 @@ class Pool(object):
                    for _ in range(self.max_workers)]
 
         with ThreadPoolExecutor(self.max_workers) as executors:
-            for worker in workers:
-                executors.submit(worker)
+            futures = [executors.submit(worker) for worker in workers]
+            # Wait for all futures to complete
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    self.output_helper.terminal(Level.ERROR, "Worker", f"Worker failed: {e}")
 
 
 # test harness
