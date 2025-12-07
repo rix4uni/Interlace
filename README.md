@@ -26,12 +26,38 @@ Easily turn single threaded command line applications into a fast, multi-threade
 - [Recent Improvements](#Recent-Improvements)
 
 # Setup 
-Install using:
+Install using one of the following methods:
 
+**Method 1: Using pip (recommended)**
+This is the most reliable method as pip handles dependencies automatically:
 ```bash
+$ pip install .
+```
+Or if installing from the current directory:
+```bash
+$ cd /path/to/Interlace
+$ pip install .
+```
+
+**Method 2: Install dependencies first, then setup.py**
+If you prefer using setup.py, install dependencies first:
+```bash
+$ pip install -r requirements.txt
 $ python3 setup.py install
 ```
-Dependencies will then be installed and Interlace will be added to your path as `interlace`.
+
+**Method 3: Manual dependency installation**
+If you encounter `ModuleNotFoundError` after installation, install dependencies manually:
+```bash
+$ pip install tqdm==4.67.1 netaddr==1.3.0
+```
+
+**Troubleshooting:**
+- If `python3 setup.py install` doesn't install dependencies, use `pip install .` instead
+- If you see `ModuleNotFoundError` for `tqdm` or `netaddr`, run: `pip install -r requirements.txt`
+- Ensure you're using the same Python environment where Interlace is installed
+
+After installation, Interlace will be added to your path as `interlace`.
 
 # Usage
 

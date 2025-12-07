@@ -6,7 +6,10 @@ from Interlace.lib.core.__version__ import __version__
 def dependencies(imported_file):
     """ __Doc__ Handles dependencies """
     with open(imported_file) as file:
-        return file.read().splitlines()
+        # Filter out empty lines and comments
+        deps = [line.strip() for line in file.read().splitlines() 
+                if line.strip() and not line.strip().startswith('#')]
+        return deps
 
 
 with open("README.md", encoding="utf-8") as file:
